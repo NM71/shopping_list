@@ -1,0 +1,187 @@
+import 'package:flutter/material.dart';
+import 'package:shopping_list/data/categories.dart';
+import 'package:shopping_list/models/category.dart';
+import 'package:shopping_list/models/grocery_item.dart';
+
+class NewItemScreen extends StatefulWidget {
+  const NewItemScreen({super.key});
+
+  @override
+  State<NewItemScreen> createState() => _NewItemScreenState();
+}
+
+class _NewItemScreenState extends State<NewItemScreen> {
+  // Global Key gives access to the underlying widget where it is used
+  // It makes sure that the form using it is not rebuilt when the state changes (build method is called)
+  // The form will keep its internal state (like the text entered in the text field) even when the widget is rebuilt
+  // This is important because we want to keep the state of the form even when the widget is rebuilt
+  final _formKey = GlobalKey<FormState>();
+
+  // Form state variables
+  var _enteredName = '';
+  var _enteredQuantity = 1;
+  var _selectedCategory = categories[Categories.vegetables]!;
+
+  void _saveItem() {
+    // This validate function will behind the scenes reach out to all FormFields and execute their validator functions
+    // In addition this validate() function will return a bool (true/false),
+    // true = if all validator functions have passed
+    // false = if atleast one validator function failed
+    if (_formKey.currentState!.validate()) {
+      // To save the form and get access to the values
+      // The save() methods triggers a special onSaved function on the form fields
+      _formKey.currentState!.save();
+      // Sending data back to previous screen
+      Navigator.of(context).pop(GroceryItem(
+          id: DateTime.now().toString(),
+          name: _enteredName,
+          quantity: _enteredQuantity,
+          category: _selectedCategory));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add a new item'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+        child: Form(
+            // The form widget is used to validate the input fields
+            // We can tell flutter to validate this form using the key
+            // We can access a Form via a Global Key
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  onSaved: (value) {
+                    // 'value' is the entered
+                    _enteredName = value!;
+
+                    // We don't need to call setState() method in here because we dont want any UI updates,
+                    // we are just storing the value in a property of our class
+                  },
+                  validator: (value) {
+                    // This function is called when the form is submitted, if it returns null, the form is valid
+                    // 'value' is the value entered in the text field
+
+                    // First we will check a null value
+                    if (value == null ||
+                        value.isEmpty ||
+                        value.trim().length <= 2 ||
+                        value.trim().length > 50) {
+                      return 'Must be between 2 and 50 characters long.';
+                    }
+                    return null;
+                  },
+                  maxLength: 50,
+                  decoration: InputDecoration(
+                    label: const Text('Item name'),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 12,
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        onSaved: (value) {
+                          /* 
+                          int.parse() => will throw an error if it fails to convert a String to a number
+                          int.tryParse() => will return 'null'  if it fails to convert a String to a number
+                          */
+                          _enteredQuantity = int.parse(value!);
+                        },
+                        validator: (value) {
+                          // This function is called when the form is submitted, if it returns null, the form is valid
+                          // 'value' is the value entered in the text field
+
+                          // First we will check a null value
+                          if (value == null ||
+                              value.isEmpty ||
+                              int.tryParse(value) == null ||
+                              int.tryParse(value)! <= 0)
+                          // 'tryParse' will return null if the value is not a number or
+                          // it fails to convert the entered value to an int
+                          {
+                            return 'Must be a valid, positive number.';
+                          }
+                          return null;
+                        },
+                        initialValue: _enteredQuantity.toString(),
+                        decoration: InputDecoration(
+                          label: const Text('Quantity'),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(width: 2),
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    Expanded(
+                        child: DropdownButtonFormField(
+                            decoration: InputDecoration(
+                              label: const Text('Category'),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(width: 2),
+                              ),
+                            ),
+                            items: [
+                              for (final category in categories.entries)
+                                DropdownMenuItem(
+                                  value: category.value,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        height: 16,
+                                        width: 16,
+                                        color: category.value.color,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(category.value.title),
+                                    ],
+                                  ),
+                                )
+                            ],
+                            value: _selectedCategory,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCategory = value!;
+                              });
+                            })),
+                  ],
+                ),
+                const SizedBox(
+                  height: 24,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                        onPressed: () {
+                          _formKey.currentState!.reset();
+                        },
+                        child: const Text('Reset')),
+                    ElevatedButton(
+                        onPressed: _saveItem, child: const Text('Submit'))
+                  ],
+                ),
+              ],
+            )),
+      ),
+    );
+  }
+}
