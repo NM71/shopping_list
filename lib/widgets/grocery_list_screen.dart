@@ -157,10 +157,16 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     );
   }
 }
+// FutureBuilder is ideal in case of loading data and showing different states of data
+// based upon the current state of the future.
+
+// How ever in case of this app where we are manipulating the data FutureBuilder is not ideal
+// because the builder() method of FutureBuilder is called only once in our case as future is derived from initState()
+// -------------------------------------------------
+// Code where FutureBuilder is used
 
 // import 'dart:convert';
 
-// import 'package:flutter/foundation.dart';
 // import 'package:flutter/material.dart';
 // import 'package:page_transition/page_transition.dart';
 // import 'package:shopping_list/data/categories.dart';
@@ -176,86 +182,60 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
 // }
 
 // class _GroceryListScreenState extends State<GroceryListScreen> {
-//   List<GroceryItem> _groceryItems = [];
-//   var _isLoading = true;
+//   List<GroceryItem> _groceryItems = []; // list of grocery items
+//   late Future<List<GroceryItem>> _loadedItems;
 //   String? _errorMessage; // for a error handling
 
 //   @override
 //   void initState() {
 //     super.initState();
-//     _loadItems();
+//     _loadedItems = _loadItems();
 //   }
 
-//   void _loadItems() async {
-//     setState(() {
-//       _isLoading = true;
-//       _errorMessage = null;
-//     });
+//   Future<List<GroceryItem>> _loadItems() async {
+//     // Fetch the data from the backend
+//     final url = Uri.https('shopping-list-6684b-default-rtdb.firebaseio.com',
+//         'shopping-list.json');
+//     // try {
+//     // put the code that is expected to fail in try block
+//     final response = await http.get(url);
 
-//     try {
-//       // Fetch the data from the backend
-//       // Use your actual Firebase URL for production
-//       final url = Uri.https('shopping-list-6684b-default-rtdb.firebaseio.com',
-//           'shopping-list.json');
-//       final response = await http.get(url);
-
-//       if (response.statusCode >= 400) {
-//         setState(() {
-//           _errorMessage = "Failed to load data. Please try again later";
-//           _isLoading = false;
-//         });
-//         return;
-//       }
-
-//       // Check if response body is null or empty
-
-//       // Important: Firebase returns a String 'null' when there is no data
-//       // Actually Firebase returns a String 'null' when there is no data
-//       // So we need to check if the response body is 'null' string, not null keyword
-//       if (response.body == 'null') {
-//         setState(() {
-//           _isLoading = false;
-//         });
-//         return;
-//       }
-
-//       // convert the response data to dart Map
-//       final Map<String, dynamic> listData = json.decode(response.body);
-//       final List<GroceryItem> loadedItems = [];
-
-//       if (listData != null && listData.isNotEmpty) {
-//         for (final item in listData.entries) {
-//           try {
-//             // getting the category
-//             final category = categories.entries
-//                 .firstWhere(
-//                     (catItem) => catItem.value.title == item.value['category'])
-//                 .value;
-//             loadedItems.add(GroceryItem(
-//               id: item.key,
-//               name: item.value['name'],
-//               quantity: item.value['quantity'],
-//               category: category,
-//             ));
-//           } catch (err) {
-//             if (kDebugMode) {
-//               print('Error processing item ${item.key}: $err');
-//             }
-//             // Continue with the next item
-//           }
-//         }
-//       }
-
-//       setState(() {
-//         _groceryItems = loadedItems;
-//         _isLoading = false;
-//       });
-//     } catch (error) {
-//       setState(() {
-//         _errorMessage = "Something went wrong! ${error.toString()}";
-//         _isLoading = false;
-//       });
+//     if (response.statusCode >= 400) {
+//       throw Exception('Failed to fetch items, Please try again later.');
 //     }
+
+//     if (response.body == 'null') {
+//       // setState(() {
+//       //   _isLoading = false;
+//       // });
+//       return [];
+//     }
+
+//     // convert the response data to dart Map
+//     final Map<String, dynamic> listData = json.decode(response.body);
+//     final List<GroceryItem> loadedItems = [];
+//     for (final item in listData.entries) {
+//       // getting the category
+//       final category = categories.entries
+//           .firstWhere(
+//               (catItem) => catItem.value.title == item.value['category'])
+//           .value;
+//       loadedItems.add(GroceryItem(
+//         id: item.key,
+//         name: item.value['name'],
+//         quantity: item.value['quantity'],
+//         category: category,
+//       ));
+//     }
+//     return loadedItems;
+//     // }
+//     // // catch block catches the error caused by the code in try block
+//     // catch (error) {
+//     //   // includes the fallback code to be executed when an error occurs
+//     //   setState(() {
+//     //     _errorMessage = "Something went wrong!. Please try again later";
+//     //   });
+//     // }
 //   }
 
 //   void _addItem() async {
@@ -276,125 +256,73 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
 
 //   void _removeItem(GroceryItem item) async {
 //     final index = _groceryItems.indexOf(item);
+
 //     setState(() {
 //       _groceryItems.remove(item);
 //     });
+//     final url = Uri.http('shopping-list-6684b-default-rtdb.firebaseio.com',
+//         'shopping-list/${item.id}.json');
+//     final response = await http.delete(url);
 
-//     try {
-//       final url = Uri.https('shopping-list-6684b-default-rtdb.firebaseio.com',
-//           'shopping-list/${item.id}.json');
-//       final response = await http.delete(url);
-
-//       if (response.statusCode >= 400) {
-//         // Show error and restore the item
-//         if (context.mounted) {
-//           return;
-//         }
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(
-//             content: Text('Failed to delete item. Please try again.'),
-//             duration: Duration(seconds: 2),
-//           ),
-//         );
-//         setState(() {
-//           if (index >= 0) {
-//             _groceryItems.insert(index, item);
-//           }
-//         });
-//       }
-//     } catch (error) {
-//       // Show error and restore the item
-//       if (context.mounted) {
-//         return;
-//       }
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text('Failed to delete item. Please try again.'),
-//           duration: Duration(seconds: 2),
-//         ),
-//       );
+//     if (response.statusCode >= 400) {
 //       setState(() {
-//         if (index >= 0) {
-//           _groceryItems.insert(index, item);
-//         }
+//         _groceryItems.insert(index, item);
 //       });
 //     }
 //   }
 
 //   @override
 //   Widget build(context) {
-//     Widget content = const Center(child: Text('No items added yet.'));
-
-//     if (_isLoading) {
-//       content = const Center(
-//         child: CircularProgressIndicator(),
-//       );
-//     }
-
-//     if (_groceryItems.isNotEmpty) {
-//       content = ListView.builder(
-//           itemCount: _groceryItems.length,
-//           itemBuilder: (context, index) {
-//             return Dismissible(
-//               key: ValueKey(_groceryItems[index].id),
-//               onDismissed: (direction) {
-//                 _removeItem(_groceryItems[index]);
-//               },
-//               background: Container(
-//                 color: Colors.red.shade400,
-//                 alignment: Alignment.centerRight,
-//                 padding: const EdgeInsets.only(right: 20),
-//                 margin: const EdgeInsets.symmetric(
-//                   horizontal: 15,
-//                   vertical: 4,
-//                 ),
-//                 child: const Icon(
-//                   Icons.delete,
-//                   color: Colors.white,
-//                   size: 20,
-//                 ),
-//               ),
-//               child: ListTile(
-//                 title: Text(_groceryItems[index].name),
-//                 leading: Container(
-//                   height: 24,
-//                   width: 24,
-//                   color: _groceryItems[index].category.color,
-//                 ),
-//                 trailing: Text(_groceryItems[index].quantity.toString()),
-//               ),
-//             );
-//           });
-//     }
-
-//     if (_errorMessage != null) {
-//       content = Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               _errorMessage!,
-//               textAlign: TextAlign.center,
-//               style: TextStyle(
-//                 color: Theme.of(context).colorScheme.error,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             TextButton(
-//               onPressed: _loadItems,
-//               child: const Text('Try Again'),
-//             ),
-//           ],
-//         ),
-//       );
-//     }
-
 //     return Scaffold(
 //       appBar: AppBar(
-//         title: const Text('Your Groceries'),
-//         actions: [IconButton(onPressed: _addItem, icon: const Icon(Icons.add))],
+//         title: Text('Your Groceries'),
+//         actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
 //       ),
-//       body: content,
+//       body: FutureBuilder(
+//           future: _loadedItems,
+//           builder: (context, snapshot) {
+//             // We don't just wanna return one widget but different widgets based on the current state of the future
+
+//             // Initial State (Loading State)
+//             if (snapshot.connectionState == ConnectionState.waiting) {
+//               return const Center(
+//                 child: CircularProgressIndicator(),
+//               );
+//             }
+
+//             // Error State
+//             if (snapshot.hasError) {
+//               return Center(
+//                 child: Text(snapshot.error.toString()),
+//               );
+//             }
+
+//             // Data loaded state (empty)
+//             if (snapshot.data!.isEmpty) {
+//               return Center(child: Text('No items in cart'));
+//             }
+
+//             // Data loaded state (not empty)
+//             return ListView.builder(
+//                 itemCount: snapshot.data!.length,
+//                 itemBuilder: (context, index) {
+//                   return Dismissible(
+//                     key: ValueKey(snapshot.data![index].id),
+//                     onDismissed: (direction) {
+//                       _removeItem(snapshot.data![index]);
+//                     },
+//                     child: ListTile(
+//                       title: Text(snapshot.data![index].name),
+//                       leading: Container(
+//                         height: 24,
+//                         width: 24,
+//                         color: snapshot.data![index].category.color,
+//                       ),
+//                       trailing: Text(snapshot.data![index].quantity.toString()),
+//                     ),
+//                   );
+//                 });
+//           }),
 //     );
 //   }
 // }
