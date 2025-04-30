@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shopping_list/data/categories.dart';
 import 'package:shopping_list/models/category.dart';
 import 'package:http/http.dart' as http;
+import 'package:shopping_list/models/grocery_item.dart';
 
 class NewItemScreen extends StatefulWidget {
   const NewItemScreen({super.key});
@@ -23,6 +25,7 @@ class _NewItemScreenState extends State<NewItemScreen> {
   var _enteredName = '';
   var _enteredQuantity = 1;
   var _selectedCategory = categories[Categories.vegetables]!;
+  var _isSending = false;
 
   void _saveItem() async {
     // This validate function will behind the scenes reach out to all FormFields and execute their validator functions
@@ -34,6 +37,9 @@ class _NewItemScreenState extends State<NewItemScreen> {
       // The save() methods triggers a special onSaved function on the form fields
       _formKey.currentState!.save();
       // Sending data back to previous screen
+      setState(() {
+        _isSending = true;
+      });
 
       final url = Uri.https('shopping-list-6684b-default-rtdb.firebaseio.com',
           'shopping-list.json');
@@ -52,16 +58,21 @@ class _NewItemScreenState extends State<NewItemScreen> {
         }),
       );
 
-      // response.statusCode == 200
-      //     ? print('Item added successfully')
-      //     : print('Failed to add item');
+      if (kDebugMode) {
+        print(response.body);
+      }
 
-      print(response.body);
+      // Response Data Map
+      final Map<String, dynamic> responseData = json.decode(response.body);
 
       if (!context.mounted) {
         return;
       }
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(GroceryItem(
+          id: responseData['name'],
+          name: _enteredName,
+          quantity: _enteredQuantity,
+          category: _selectedCategory));
 
       // Navigator.of(context).pop(GroceryItem(
       //     id: DateTime.now().toString(),
@@ -202,12 +213,20 @@ class _NewItemScreenState extends State<NewItemScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     TextButton(
-                        onPressed: () {
-                          _formKey.currentState!.reset();
-                        },
+                        onPressed: _isSending
+                            ? null
+                            : () {
+                                _formKey.currentState!.reset();
+                              },
                         child: const Text('Reset')),
                     ElevatedButton(
-                        onPressed: _saveItem, child: const Text('Submit'))
+                        onPressed: _isSending ? null : _saveItem,
+                        child: _isSending
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator())
+                            : const Text('Submit'))
                   ],
                 ),
               ],
